@@ -1,0 +1,142 @@
+// index //
+<?php
+session_start();
+include 'libs/util.php';
+$user=getArr($_SESSION,'username');
+//=$_SESSION['username']
+
+?>
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <title> POLDO </title>
+  
+    </head>
+<body>
+<?php
+if ($user!="")
+	print("<H3> benvenuto $user </h3>");
+?>
+
+<ul>
+<li> <a href="login.php">login </a></li>
+<li> <a href="visual.php">visualizza </a></li>
+<li> <a href="insert.php">inserimento </a></li>
+<li> <a href="adduser.php">aggiunta utente</a></li>
+<li> <a href="addorder.php">aggiunta ordine</a></li>
+
+<li> <a href="visualOrder.php">ordini utente corrente </a> </li>
+</ul>
+
+</body>
+</html>
+
+// login //
+<?php
+session_start();
+//Gestisce il login
+include "libs/util.php";
+include 'libs/db_connect.php';
+
+$ut=getArr($_POST,"username");
+$pw=getArr($_POST,"password");
+$pw=hash('sha256',$pw);
+try {
+		//prepare query
+		$query = "select * from utenti where username= ? and password= ?";
+		$stmt = $con->prepare( $query );
+
+
+		$stmt->bindParam(1, $ut);
+		$stmt->bindParam(2, $pw);  
+		//execute our query
+		$stmt->execute();
+
+		//store retrieved row to a variable
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+		
+		if ($row){  // password coincide 
+			$user=$row['username'];
+			$mail=$row['mail'];
+			$_SESSION['username']=$user;
+			$_SESSION['id']=$row['id']; // persiste fra pagine diverse
+			$error="";
+		}
+		else{
+			$user="";
+			$error="password errata";
+			session_destroy();
+		}
+	
+
+	}catch(PDOException $exception){ //to handle error
+		$user="";
+		session_destroy();
+		$errore=$exception->getMessage();
+
+	}
+
+	header('Location: index.php');
+
+?>
+
+// visual ord //
+<?php 
+// visualizza solo gli ordini di un certo utente
+// check utente log
+	session_start();  // deve essere la prima istruzione
+	include 'libs/util.php';
+	
+	$iduser=getArr($_SESSION,'id');
+	$username=getArr($_SESSION,'username');
+
+	if ($iduser=="" || $username==""){
+		header('Location: index.php');
+	}
+	include 'libs/db_connect.php';
+
+?>
+
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <title> POLDO </title>
+  
+    </head>
+<body>
+
+<a href="index.php">Home </a>
+
+<?php
+	//select all data
+	$query = "SELECT id,data from ordini where idutente=?";
+	try {
+		$num=0;
+		$stmt = $con->prepare( $query );
+		$stmt->execute(array($iduser));
+ 
+		$num = $stmt->rowCount();
+	  
+	} catch(PDOException $ex) {
+	    echo "Errore !".$ex->getMessage();
+	}
+	//se num > 0 recordset vuoto o errore 
+	if($num>0){
+	  
+	    echo "<table border='1'>";
+	        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)){
+	            echo "<tr>";
+	                echo "<td>".$row['id']."</td>";
+	                echo "<td>".$row['data']."</td>";
+	            echo "</tr>";
+	        }
+	    echo "</table>";
+	}
+	else{
+	    echo "No records found.";
+	}
+
+?> 
+ 
+</body>
+</html>

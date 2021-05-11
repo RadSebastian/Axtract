@@ -1,0 +1,219 @@
+//index //
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title> Index </title>
+    </head>
+<body>
+    <a href="select.php">Select</a>
+    <br><br>
+    <a href="select_search.php">Select con ricerca</a>
+    <br><br>
+    <a href="delete.php">Delete</a>
+    <br><br>
+    <a href="insert.php">Insert</a>
+</body>
+</html>
+
+//db_connect //
+<?php
+    $host = "localhost";
+    $db_name = "numbers";
+    $username = "root";
+    $password = "";
+
+    try {
+        //PDO non fa differenza tra MySQL, MariaDB ... è univoco per tutti
+        $con = new PDO("mysql:host={$host};dbname={$db_name}", $username, $password,array(PDO::ATTR_PERSISTENT => true));
+        $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch(PDOException $exception){
+        echo "Connection error: " . $exception->getMessage();
+    }
+?>
+
+//util //
+<?php
+// legge da un array senza errori, al limite stringa vuota 
+function getRicerca($A,$par){
+   $ret="";
+   if( isset( $A[$par] ) ) 
+	$ret=$A[$par];
+   return $ret;
+}
+?>
+
+//select //
+<?php
+include "db_connect.php"; 
+?>
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Select actor</title>
+    </head>
+<body>
+    
+    <a href="index.php">Home</a> <br><br>
+
+    <?php
+        $query="SELECT username, first_name, last_name, gender FROM user_details";
+        try{
+            $stmt=$con->prepare($query);
+            $stmt->execute();
+                
+            $row=$stmt->rowCount();
+        } catch (Exception $ex) {
+            print("Errore! " . $ex->getMessage());
+        }
+            
+        print("<table border='1'>");
+            print("<tr>");
+                print("<th>Id</th>");
+                print("<th>Username</th>");
+                print("<th>Nome</th>");
+                print("<th>Cognome</th>");
+                print("<th>Gender</th>");
+
+            print("</tr>");
+                    
+            $np=1; //Valore che rappresenta il numero progressivo, verrà incrementato ogni volta
+            while($row=$stmt -> fetch(PDO::FETCH_ASSOC )){ //fecth carica una riga alla volta generata dalla query
+                print("<tr>");
+                    print("<td>".$np."</td>");
+                    print("<td>".$row['username']."</td>");
+                    print("<td>".$row['first_name']."</td>");
+                    print("<td>".$row['last_name']."</td>");
+                    print("<td>".$row['gender']."</td>");
+                print("</tr>");
+                $np++;
+            }
+            print("</table>");
+    ?>
+    
+</body>
+</html>
+
+//select_search //
+<?php
+include "util.php";
+include "db_connect.php";
+?>
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Select actor con ricerca</title>
+    </head>
+<body>
+    
+    <a href="index.php">Home</a> <br><br>
+    
+    <form method='POST'>
+        Ricerca <input type='text' name='str'/><br><br>
+        <input type='submit' value='Ricerca'/><br><br>
+    </form>
+    
+    <?php
+        $str= $_REQUEST["str"];//getRicerca($_REQUEST, "str");
+        if(strlen($str)>0){
+            $query="SELECT username, first_name, last_name, gender FROM user_details WHERE first_name LIKE ? OR last_name LIKE ?";
+            try{
+                $num=0;
+                $stmt=$con->prepare($query);
+                $stmt->execute(array("%$str%", "%$str%"));
+                
+               $row=$stmt->rowCount();
+            } catch (Exception $ex) {
+                print("Errore! " . $ex->getMessage());
+            }
+            
+            if($row>0){ //Se vengono restituiti in output uno o piu' attori
+                print("<table border='1'>");
+                    print("<tr>");
+                        print("<th>Id</th>");
+                        print("<th>Username</th>");
+                        print("<th>Nome</th>");
+                        print("<th>Cognome</th>");
+                        print("<th>Gender</th>");
+                    print("</tr>");
+                    
+                    $np=1; //Valore che rappresenta il numero progressivo, verrà incrementato ogni volta
+                    while($row=$stmt -> fetch(PDO::FETCH_ASSOC)){
+                        print("<tr>");
+                            print("<td>".$np."</td>");
+                            print("<td>".$row['username']."</td>");
+                            print("<td>".$row['first_name']."</td>");
+                            print("<td>".$row['last_name']."</td>");
+                            print("<td>".$row['gender']."</td>");
+                        print("</tr>");
+                        $np++;
+                    }
+                print("</table>");
+            } else{
+                print("Nessun record trovato");
+            }
+        }
+    ?>
+
+</body>
+</html>
+
+//insert //
+<?php
+include "util.php";
+include "db_connect.php";
+?>
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Insert actor</title>
+    </head>
+    <body>
+        <a href="index.php">Home</a> <br><br>
+  
+        <form method="POST"  >
+            ID: <input type="number" name="actor_id"/> <br><br>
+            Nome: <input type="text" name="first_name"/> <br><br>
+            Cognome: <input type="text" name="last_name"/> <br><br>
+            Ultima modifica: <input type="datetimtione-local" name="last_update"/> <br><br>
+            
+            <input type="submit" value="Aggiungi"/>
+        </form>
+        
+		
+        <?php
+	
+		
+        $idStr= getRicerca($_POST, "actor_id");
+        $id= intval($idStr, $base=10);
+        $nome= getRicerca($_POST, "first_name");
+        $cognome= getRicerca($_POST, "last_name");
+        $modificaStr= getRicerca($_POST, "last_update");
+        $modifica= strtotime($modificaStr);
+        if ($idStr!="" && $nome!="" && $cognome!="" && $modifica!="")
+        {
+			$query="INSERT INTO actor VALUES (?,?,?,?)";
+			try{
+				$stmt=$con->prepare($query);
+				$stmt->execute(array($id, $nome, $cognome, $modifica));
+				print("<b> record inserito</b>");
+            } catch (Exception $ex) {
+                print("Errore!" . $ex);
+            }
+		}else
+		{
+			print(" <b> parametri non inseriti </b>");
+		}
+        ?>
+        
+        <br>
+        <a href="select.php">Lista attori</a>
+        
+    </body>
+</html>
+
+
+
